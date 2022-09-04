@@ -8,89 +8,75 @@ import scala.concurrent.Future
 import scala.io.StdIn
 import scala.util.Try
 import zio.duration._
+
 import scala.language.postfixOps
-import zio.Task
-import zio.IO
-import zio.RIO
-import zio.URIO
-import zio.UIO
-import zio.ZIO
+import zio.{IO, RIO, Task, UIO, URIO, ZIO}
 
+import scala.annotation.tailrec
 
-
-/** **
- * ZIO[-R, +E, +A] ----> R => Either[E, A]
- *
+/**
+ * ** ZIO[-R, +E, +A] ----> R => Either[E, A]
  */
 
-
 object toyModel {
-
 
   /**
    * Используя executable encoding реализуем свой zio
    */
 
-   case class ZIO[-R, +E, +A](run: R => Either[E, A]){ self =>
+  case class ZIO[-R, +E, +A](run: R => Either[E, A]) { self =>
 
-      def map[B](f: A => B): ZIO[R, E, B] =
-        ZIO(r => self.run(r).map(f))
+    def map[B](f: A => B): ZIO[R, E, B] =
+      ZIO(r => self.run(r).map(f))
 
-      def flatMap[R1 <: R, E1 >: E, B](f: A => ZIO[R1, E1, B]): ZIO[R1, E1, B] =
-        ZIO(r => self.run(r)
-          .fold(e => ZIO.fail(e), v => f(v)).run(r))
-   }
-
+    def flatMap[R1 <: R, E1 >: E, B](f: A => ZIO[R1, E1, B]): ZIO[R1, E1, B] =
+      ZIO(r =>
+        self
+          .run(r)
+          .fold(e => ZIO.fail(e), v => f(v))
+          .run(r)
+      )
+  }
 
   /**
    * Реализуем конструкторы под названием effect и fail
    */
 
-   object ZIO{
-      def effect[A](a: => A): ZIO[Any, Throwable, A] = try{
-        ZIO(_ => Right(a))
-      } catch {
-        case e: Throwable => fail(e)
-      }
+  object ZIO {
+    def effect[A](a: => A): ZIO[Any, Throwable, A] = try ZIO(_ => Right(a))
+    catch {
+      case e: Throwable => fail(e)
+    }
 
-      def fail[E](e: E): ZIO[Any, E, Nothing] =
-        ZIO(_ => Left(e))
-   }
+    def fail[E](e: E): ZIO[Any, E, Nothing] =
+      ZIO(_ => Left(e))
+  }
 
-
-
-  /** *
-   * Напишите консольное echo приложение с помощью нашего игрушечного ZIO
+  /**
+   * * Напишите консольное echo приложение с помощью нашего игрушечного ZIO
    */
 
-   lazy val echo: ZIO[Any, Throwable, Unit] = for{
-     str <- ZIO.effect(StdIn.readLine())
-     _ <- ZIO.effect(println(str))
-   } yield ()
-
-
-
+  lazy val echo: ZIO[Any, Throwable, Unit] = for {
+    str <- ZIO.effect(StdIn.readLine())
+    _   <- ZIO.effect(println(str))
+  } yield ()
 
   type Error
   type Environment
 
   type F[A] = ZIO[Any, Throwable, A]
 
-
-
-  lazy val _: Task[Int] = ??? // ZIO[Any, Throwable, Int]
-  lazy val _: IO[Error, Int] = ??? // ZIO[Any, Error, Int]
-  lazy val _: RIO[Environment, Int] = ??? // ZIO[Environment, Throwable, Int]
+  lazy val _: Task[Int]              = ??? // ZIO[Any, Throwable, Int]
+  lazy val _: IO[Error, Int]         = ??? // ZIO[Any, Error, Int]
+  lazy val _: RIO[Environment, Int]  = ??? // ZIO[Environment, Throwable, Int]
   lazy val _: URIO[Environment, Int] = ??? // ZIO[Environment, Nothing, Int]
-  lazy val _: UIO[Int] = ??? // ZIO[Any, Nothing, Int]
+  lazy val _: UIO[Int]               = ??? // ZIO[Any, Nothing, Int]
 }
 
 object zioConstructors {
 
-
   // константа
   val z1: UIO[Int] = ZIO.succeed(7)
-
 
   // любой эффект
   val z2: Task[Unit] = ZIO.effect(println("Hello"))
@@ -99,46 +85,36 @@ object zioConstructors {
 
   val z3: UIO[Unit] = ZIO.effectTotal(println("Hello"))
 
-
-
-
   // From Future
   val f: Future[Int] = ???
-  val z4: Task[Int] = ZIO.fromFuture(ec => f.flatMap(v => Future(v)(ec))(ec))
-
+  val z4: Task[Int]  = ZIO.fromFuture(ec => f.flatMap(v => Future(v)(ec))(ec))
 
   // From try
-  lazy val t: Try[String] = ???
+  lazy val t: Try[String]   = ???
   lazy val z5: Task[String] = ZIO.fromTry(t)
 
-
   // From option
-  lazy val opt : Option[Int] = ???
+  lazy val opt: Option[Int]             = ???
   lazy val z6: IO[Option[Nothing], Int] = ZIO.fromOption(opt)
-  lazy val z7: UIO[Option[Int]] = z6.option
+  lazy val z7: UIO[Option[Int]]         = z6.option
   lazy val z8: IO[Option[Nothing], Int] = z7.some
 
-
-
   // From either
-  lazy val e: Either[String, Int] = ???
-  lazy val z9: IO[String, Int] = ZIO.fromEither(e)
+  lazy val e: Either[String, Int]        = ???
+  lazy val z9: IO[String, Int]           = ZIO.fromEither(e)
   lazy val z10: UIO[Either[String, Int]] = z9.either
-  lazy val z11: IO[String, Int] = z10.absolve
+  lazy val z11: IO[String, Int]          = z10.absolve
 
   type User
   type Address
 
-
-  def getUser(): Task[Option[User]] = ???
+  def getUser(): Task[Option[User]]              = ???
   def getAddress(u: User): Task[Option[Address]] = ???
 
-  val r = for{
-    user <- getUser().some
+  val r = for {
+    user    <- getUser().some
     address <- getAddress(user)
   } yield ()
-
-
 
   // From function
   lazy val z12: URIO[String, Unit] = ZIO.fromFunction[String, Unit](str => println(str))
@@ -149,7 +125,7 @@ object zioConstructors {
 
   lazy val _: UIO[Option[Nothing]] = ZIO.none
 
-  lazy val _: UIO[Nothing] =  ZIO.never // while(true)
+  lazy val _: UIO[Nothing] = ZIO.never // while(true)
 
   lazy val _: UIO[Nothing] = ZIO.die(new Throwable("Ooops"))
 
@@ -157,47 +133,67 @@ object zioConstructors {
 
 }
 
-
-
 object zioOperators {
 
-  /** *
+  /**
+   * *
    *
-   * 1. Создать ZIO эффект который будет читать строку из консоли
+   *   1. Создать ZIO эффект который будет читать строку из консоли
    */
 
-  lazy val readLine = ???
+  lazy val readLine = ZIO.effect(StdIn.readLine())
 
-  /** *
+  /**
+   * *
    *
    * 2. Создать ZIO эффект который будет писать строку в консоль
    */
 
-  def writeLine(str: String) = ???
-
-  /** *
-   * 3. Создать ZIO эффект котрый будет трансформировать эффект содержащий строку в эффект содержащий Int
-   */
-
-  lazy val lineToInt = ???
-  /** *
-   * 3.Создать ZIO эффект, который будет работать как echo для консоли
-   *
-   */
-
-  lazy val echo = ???
+  def writeLine(str: String): Task[Unit] = ZIO.effect(println(str))
 
   /**
-   * Создать ZIO эффект, который будет привествовать пользователя и говорить, что он работает как echo
+   * * 3. Создать ZIO эффект котрый будет трансформировать эффект содержащий
+   * строку в эффект содержащий Int
    */
 
-  lazy val greetAndEcho = ???
+//  lazy val lineToInt: Task[Task[String] => Task[Int]] = ZIO.effect(x => x.map(_.toInt)) // does not have sense
+  def lineToInt2(s: Task[String]): Task[Int]          = s.map(_.toInt)                  // idk can we call function "zio effect"
+
+  /**
+   * * 3.Создать ZIO эффект, который будет работать как echo для консоли
+   */
+
+  lazy val echo: Task[Unit] = for {
+    s <- readLine
+    _ <- writeLine(s)
+  } yield ()
+
+  /**
+   * Создать ZIO эффект, который будет привествовать пользователя и говорить,
+   * что он работает как echo
+   */
+
+  lazy val endlessEcho: Task[Unit] = { // not works :(
+    @tailrec
+    def loop(): Task[Unit] = {
+      echo
+      loop()
+    }
+    loop()
+  }
+
+  lazy val greetAndEcho = for {
+    _ <- writeLine("What's your name?")
+    s <- readLine
+    _ <- writeLine(s"Hello, $s. I works like echo")
+    _ <- echo
+//    _ <- endlessEcho
+  } yield ()
 
   // Другие варианты композиции
 
-  lazy val a1: Task[Unit] = ??? // println()
+  lazy val a1: Task[Unit]   = ??? // println()
   lazy val b1: Task[String] = ???
-
 
   lazy val z13: Task[(Unit, String)] = a1 zip b1
 
@@ -205,77 +201,88 @@ object zioOperators {
 
   lazy val z15: ZIO[Any, Throwable, String] = b1 zipLeft a1
 
-
   // greet and echo улучшенный
-  lazy val _: ZIO[Any, Throwable, Unit] = ???
-
+  lazy val greetAdvanced: ZIO[Any, Throwable, Unit] = for {
+    s <- writeLine("What's your name?") zipRight readLine
+    _ <- writeLine(s"Hello, $s. I works like echo") zipRight echo
+  } yield ()
 
   /**
-   * Используя уже созданные эффекты, написать программу, которая будет считывать поочереди считывать две
-   * строки из консоли, преобразовывать их в числа, а затем складывать их
+   * Используя уже созданные эффекты, написать программу, которая будет
+   * считывать поочереди считывать две строки из консоли, преобразовывать их в
+   * числа, а затем складывать их
    */
 
-  val r1 = ???
+  def writeLineT[A](a: A): Task[Unit] = ZIO.effect(println(a))
+
+  lazy val r1: Task[Int] = for {
+    _  <- writeLine("Введите два числа:")
+    n1 <- lineToInt2(readLine)
+    n2 <- lineToInt2(readLine)
+//    _  <- writeLineT[Int](n1 + n2)
+  } yield n1 + n2
 
   /**
    * Второй вариант
    */
 
-  val r2: ZIO[Any, Throwable, Int] = ???
+  lazy val r2: Task[Int] = for {
+    _        <- writeLine("Введите два числа:")
+    (n1, n2) <- lineToInt2(readLine) zip lineToInt2(readLine)
+  } yield n1 + n2
 
   /**
-   * Доработать написанную программу, чтобы она еще печатала результат вычисления в консоль
+   * Доработать написанную программу, чтобы она еще печатала результат
+   * вычисления в консоль
    */
 
-  lazy val r3 = ???
+  lazy val r3 = for {
+    _  <- writeLine("Введите два числа:")
+    n1 <- lineToInt2(readLine)
+    n2 <- lineToInt2(readLine)
+    _  <- writeLineT[Int](n1 + n2)
+  } yield n1 + n2
 
-
-  lazy val a: Task[Int] = ???
+  lazy val a: Task[Int]    = ???
   lazy val b: Task[String] = ???
 
   /**
    * последовательная комбинация эффектов a и b
    */
-  lazy val ab1: ZIO[Any, Throwable, (Int, String)] = ???
+  lazy val ab1: ZIO[Any, Throwable, (Int, String)] = a zip b
 
   /**
    * последовательная комбинация эффектов a и b
    */
-  lazy val ab2: ZIO[Any, Throwable, Int] = ??? 
+  lazy val ab2: ZIO[Any, Throwable, Int] = a zipLeft b
 
   /**
    * последовательная комбинация эффектов a и b
    */
-  lazy val ab3: ZIO[Any, Throwable, String] = ??? 
-
+  lazy val ab3: ZIO[Any, Throwable, String] = a zipRight b
 
   /**
-   * Последовательная комбинация эффета b и b, при этом результатом должна быть конкатенация
-   * возвращаемых значений
+   * Последовательная комбинация эффета b и b, при этом результатом должна быть
+   * конкатенация возвращаемых значений
    */
   lazy val ab4 = b.zipWith(b)(_ + _)
 
+  /**
+   * Другой эффект в случае ошибки
+   */
+
+  lazy val ab5 = ???
 
   /**
-    * 
-    * Другой эффект в случае ошибки
-    */
+   * A as B
+   */
 
-    val ab5 = ???
-
-  /**
-    * 
-    * A as B
-    */
-
-
-    trait UserValidationError
-
+  trait UserValidationError
 
   def readFile(fileName: String): ZIO[Any, IOException, String] = ???
 
   // из эффекта с ошибкой, в эффект который не падает
 
-  val d = ???
-  
+  lazy val d = ???
+
 }
