@@ -1,5 +1,8 @@
 package module3
 
+import module3.zio_homework.config
+import module3.zio_homework.config.AppConfig
+import zio.console.Console
 import zio.{ExitCode, URIO, ZIO}
 
 object App {

@@ -7,9 +7,9 @@ ThisBuild / organizationName := "otus"
 
 lazy val root = (project in file("."))
   .settings(
-      name := "scala-dev-mooc-2022-03",
+      name := "scala-dev-mooc-2022-06",
       libraryDependencies ++= Dependencies.zio,
-      libraryDependencies ++= Dependencies.pureconfig,
+      libraryDependencies ++= Dependencies.zioConfig,
       libraryDependencies += scalaTest % Test,
       libraryDependencies += catsCore,
       libraryDependencies ++= catsEffect,

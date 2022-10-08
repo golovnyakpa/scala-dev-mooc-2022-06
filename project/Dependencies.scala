@@ -47,9 +47,10 @@ object Dependencies {
     "dev.zio" %% "zio-macros" % ZioVersion
   )
 
-  lazy val pureconfig: Seq[ModuleID] = Seq(
-    "com.github.pureconfig" %% "pureconfig" % PureconfigVersion,
-    "com.github.pureconfig" %% "pureconfig-cats-effect" % PureconfigVersion
+  lazy val zioConfig: Seq[ModuleID] = Seq(
+    "dev.zio" %% "zio-config" % "1.0.5",
+    "dev.zio" %% "zio-config-magnolia" % "1.0.5",
+    "dev.zio" %% "zio-config-typesafe" % "1.0.5"
   )
 
 }

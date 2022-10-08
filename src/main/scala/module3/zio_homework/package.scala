@@ -36,6 +36,7 @@ package object zio_homework {
    * Используйте эффект "load" из пакета config
    */
 
+
   def loadConfigOrDefault = ???
 
 
