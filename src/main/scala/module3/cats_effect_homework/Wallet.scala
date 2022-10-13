@@ -32,11 +32,11 @@ final class FileWallet[F[_]: Sync](id: WalletId) extends Wallet[F] {
   private def getWalletFileName(id: WalletId): String =
     s"wallet_$id.txt"
 
-  private def getAbsoluteWalletPath(id: WalletId): Path =
-    java.nio.file.Paths.get(System.getProperty("user.dir"), getWalletFileName(id))
+  private def getAbsoluteWalletPath(id: WalletId): F[Path] =
+    Sync[F].delay(java.nio.file.Paths.get(System.getProperty("user.dir"), getWalletFileName(id)))
 
   override def balance: F[BigDecimal] = for {
-    path       <- Sync[F].delay(getAbsoluteWalletPath(id))
+    path       <- getAbsoluteWalletPath(id)
     fileExists <- Sync[F].delay(java.nio.file.Files.exists(path))
     strBalance <- Sync[F].delay(if (fileExists) java.nio.file.Files.readString(path) else "0")
     res        <- Sync[F].delay(BigDecimal(strBalance))
@@ -44,13 +44,13 @@ final class FileWallet[F[_]: Sync](id: WalletId) extends Wallet[F] {
 
   override def topup(amount: BigDecimal): F[Unit] = for {
     currentBalance <- balance
-    path           <- Sync[F].delay(getAbsoluteWalletPath(id))
+    path           <- getAbsoluteWalletPath(id)
     _              <- Sync[F].delay(java.nio.file.Files.write(path, (currentBalance + amount).toString.getBytes()))
   } yield ()
 
   override def withdraw(amount: BigDecimal): F[Either[WalletError, Unit]] = for {
     currentBalance <- balance
-    path           <- Sync[F].delay(getAbsoluteWalletPath(id))
+    path           <- getAbsoluteWalletPath(id)
     res <- Sync[F].delay(
              if (currentBalance - amount < 0) {
                Left(BalanceTooLow)
@@ -70,7 +70,7 @@ object Wallet {
   // Здесь нужно использовать обобщенную версию уже пройденного вами метода IO.delay,
   // вызывается она так: Sync[F].delay(...)
   // Тайпкласс Sync из cats-effect описывает возможность заворачивания сайд-эффектов
-  def fileWallet[F[_]: Sync](id: WalletId): F[Wallet[F]] = Sync[F].delay(new FileWallet[F](id))
+  def fileWallet[F[_]: Sync](id: WalletId): F[Wallet[F]] = Sync[F].pure(new FileWallet[F](id))
 
   type WalletId = String
 

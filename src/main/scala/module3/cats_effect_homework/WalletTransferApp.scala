@@ -44,9 +44,9 @@ object WalletTransferApp extends IOApp.Simple {
   // не уверен в правильности, но покопался в сорцах Ref, unsafe вроде единственный конструктор,
   // который возвращает Ref, а не F[Ref]. Насколько понимаю, в pure заворачивать не совсем
   // корректно, но не понял, как правильно
-  def wallet(balance: BigDecimal): IO[Wallet[IO]] = IO.pure(
-    new InMemWallet[IO](Ref.unsafe[IO, BigDecimal](balance))
-  )
+  def wallet(balance: BigDecimal): IO[Wallet[IO]] =
+    Ref.of[IO, BigDecimal](balance).map(new InMemWallet[IO](_))
+
 
   // а это тест, который выполняет перевод с одного кошелька на другой и выводит балансы после операции.
   // Тоже менять не нужно
